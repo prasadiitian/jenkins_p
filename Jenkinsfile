@@ -19,15 +19,32 @@ pipeline {
         stage('Install + Test') {
             steps {
                 script {
-                    def inputPath = ((env.INPUT_FILE ?: params.INPUT_FILE) ?: '').toString().trim()
-                    if (!inputPath) {
+                    def originalName = (env.INPUT_FILE ?: '').toString().trim()
+
+                    // Jenkins file parameters are tricky: the env var often holds the original filename,
+                    // but the actual file in the workspace may be saved as the parameter name.
+                    def candidates = []
+                    if (originalName) {
+                        candidates << originalName
+                    }
+                    candidates << 'INPUT_FILE'
+                    candidates << 'sample_input.csv'
+
+                    def found = candidates.find { p -> fileExists(p) }
+                    if (!found) {
+                        error("Unable to locate uploaded file. Tried: ${candidates.join(', ')}")
+                    }
+
+                    if (found == 'sample_input.csv' && originalName) {
+                        echo "Uploaded filename was '${originalName}', but it was not found in workspace; using sample_input.csv instead."
+                        currentBuild.result = 'UNSTABLE'
+                    } else if (found == 'sample_input.csv' && !originalName) {
                         echo "INPUT_FILE not provided. Falling back to sample_input.csv."
                         echo "Tip: use 'Build with Parameters' to upload INPUT_FILE."
-                        inputPath = 'sample_input.csv'
                         currentBuild.result = 'UNSTABLE'
                     }
 
-                    env.VALIDATION_INPUT = inputPath
+                    env.VALIDATION_INPUT = found
                     echo "Using input file: ${env.VALIDATION_INPUT}"
 
                     if (isUnix()) {
