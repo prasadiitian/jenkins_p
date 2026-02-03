@@ -62,7 +62,8 @@ pipeline {
 
                         // Last-resort: search the workspace recursively for the uploaded name.
                         if (originalName) {
-                            bat "for /f \"delims=\" %%F in ('dir /s /b \"%WORKSPACE%\\${originalName}\" 2^>nul') do (if not exist \"${originalName}\" copy /y \"%%F\" \"${originalName}\" >nul)"
+                            // Note: `dir` returns exit code 1 when nothing is found; don't fail the build on this best-effort search.
+                            bat "@echo off & for /f \"delims=\" %%F in ('dir /s /b \"%WORKSPACE%\\${originalName}\" 2^>nul') do (if not exist \"${originalName}\" copy /y \"%%F\" \"${originalName}\" >nul) & exit /b 0"
                         }
 
                         bat "echo Debug: dir workspace root"
