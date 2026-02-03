@@ -21,13 +21,13 @@ pipeline {
                             python -m pip install --upgrade pip
                             python -m pip install -r requirements.txt
                             mkdir -p reports
-                            pytest --junitxml=reports/junit.xml
+                            python -m pytest --junitxml=reports/junit.xml
                         '''
                     } else {
                         bat "python -m pip install --upgrade pip"
                         bat "python -m pip install -r requirements.txt"
                         bat "if not exist reports mkdir reports"
-                        bat "pytest --junitxml=reports\\junit.xml"
+                        bat "python -m pytest --junitxml=reports\\junit.xml"
                     }
                 }
             }
