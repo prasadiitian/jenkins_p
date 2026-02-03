@@ -22,6 +22,14 @@ pipeline {
                     def originalName = (env.INPUT_FILE ?: '').toString().trim()
                     echo "Debug: env.INPUT_FILE='${originalName}'"
 
+                    def fileParamsDir = null
+                    if (env.JENKINS_HOME && env.JOB_NAME && env.BUILD_NUMBER) {
+                        def jobParts = env.JOB_NAME.tokenize('/')
+                        def jobPath = jobParts.collect { "jobs/${it}" }.join('/')
+                        fileParamsDir = "${env.JENKINS_HOME}/${jobPath}/builds/${env.BUILD_NUMBER}/fileParameters"
+                        echo "Debug: fileParameters dir='${fileParamsDir}'"
+                    }
+
                     // Some Jenkins setups store file parameters under WORKSPACE@tmp.
                     // Try to materialize it into the workspace as INPUT_FILE.
                     if (isUnix()) {
@@ -39,6 +47,24 @@ pipeline {
                         bat "@echo off"
                         bat "if exist \"%WORKSPACE%@tmp\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"%WORKSPACE%@tmp\\INPUT_FILE\" INPUT_FILE >nul"
                         bat "if not \"%INPUT_FILE%\"==\"\" if exist \"%WORKSPACE%@tmp\\%INPUT_FILE%\" if not exist \"%INPUT_FILE%\" copy /y \"%WORKSPACE%@tmp\\%INPUT_FILE%\" \"%INPUT_FILE%\" >nul"
+
+                        if (fileParamsDir) {
+                            def fpWin = fileParamsDir.replace('/', '\\')
+                            bat "echo Debug: dir fileParameters"
+                            bat "if exist \"${fpWin}\" dir /a /b \"${fpWin}\""
+
+                            // Common location for uploaded file parameters
+                            bat "if exist \"${fpWin}\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"${fpWin}\\INPUT_FILE\" INPUT_FILE >nul"
+                            if (originalName) {
+                                bat "if exist \"${fpWin}\\${originalName}\" if not exist \"${originalName}\" copy /y \"${fpWin}\\${originalName}\" \"${originalName}\" >nul"
+                            }
+                        }
+
+                        // Last-resort: search the workspace recursively for the uploaded name.
+                        if (originalName) {
+                            bat "for /f \"delims=\" %%F in ('dir /s /b \"%WORKSPACE%\\${originalName}\" 2^>nul') do (if not exist \"${originalName}\" copy /y \"%%F\" \"${originalName}\" >nul)"
+                        }
+
                         bat "echo Debug: dir workspace root"
                         bat "dir /a /b"
                         bat "echo Debug: dir workspace@tmp"
