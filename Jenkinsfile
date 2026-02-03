@@ -7,6 +7,10 @@ properties([
 pipeline {
     agent any
 
+    environment {
+        PYTHONPATH = 'src'
+    }
+
     options {
         timestamps()
     }
