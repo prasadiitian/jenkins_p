@@ -20,9 +20,32 @@ pipeline {
             steps {
                 script {
                     def originalName = (env.INPUT_FILE ?: '').toString().trim()
+                    echo "Debug: env.INPUT_FILE='${originalName}'"
 
-                    // Jenkins file parameters are tricky: the env var often holds the original filename,
-                    // but the actual file in the workspace may be saved as the parameter name.
+                    // Some Jenkins setups store file parameters under WORKSPACE@tmp.
+                    // Try to materialize it into the workspace as INPUT_FILE.
+                    if (isUnix()) {
+                        sh '''
+                            set +e
+                            if [ -f "$WORKSPACE@tmp/INPUT_FILE" ] && [ ! -f "INPUT_FILE" ]; then
+                              cp "$WORKSPACE@tmp/INPUT_FILE" "INPUT_FILE"
+                            fi
+                            if [ -n "${INPUT_FILE:-}" ] && [ -f "$WORKSPACE@tmp/${INPUT_FILE}" ] && [ ! -f "${INPUT_FILE}" ]; then
+                              cp "$WORKSPACE@tmp/${INPUT_FILE}" "${INPUT_FILE}"
+                            fi
+                            set -e
+                        '''
+                    } else {
+                        bat "@echo off"
+                        bat "if exist \"%WORKSPACE%@tmp\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"%WORKSPACE%@tmp\\INPUT_FILE\" INPUT_FILE >nul"
+                        bat "if not \"%INPUT_FILE%\"==\"\" if exist \"%WORKSPACE%@tmp\\%INPUT_FILE%\" if not exist \"%INPUT_FILE%\" copy /y \"%WORKSPACE%@tmp\\%INPUT_FILE%\" \"%INPUT_FILE%\" >nul"
+                        bat "echo Debug: dir workspace root"
+                        bat "dir /a /b"
+                        bat "echo Debug: dir workspace@tmp"
+                        bat "if exist \"%WORKSPACE%@tmp\" dir /a /b \"%WORKSPACE%@tmp\""
+                    }
+
+                    // Resolve which path we should validate.
                     def candidates = []
                     if (originalName) {
                         candidates << originalName
@@ -32,15 +55,11 @@ pipeline {
 
                     def found = candidates.find { p -> fileExists(p) }
                     if (!found) {
-                        error("Unable to locate uploaded file. Tried: ${candidates.join(', ')}")
+                        error("Unable to locate input file in workspace. Tried: ${candidates.join(', ')}")
                     }
 
-                    if (found == 'sample_input.csv' && originalName) {
-                        echo "Uploaded filename was '${originalName}', but it was not found in workspace; using sample_input.csv instead."
-                        currentBuild.result = 'UNSTABLE'
-                    } else if (found == 'sample_input.csv' && !originalName) {
-                        echo "INPUT_FILE not provided. Falling back to sample_input.csv."
-                        echo "Tip: use 'Build with Parameters' to upload INPUT_FILE."
+                    if (found == 'sample_input.csv') {
+                        echo "Using sample_input.csv (no usable upload found)."
                         currentBuild.result = 'UNSTABLE'
                     }
 
