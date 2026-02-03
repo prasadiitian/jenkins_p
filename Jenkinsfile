@@ -44,32 +44,32 @@ pipeline {
                             set -e
                         '''
                     } else {
-                        bat "@echo off"
-                        bat "if exist \"%WORKSPACE%@tmp\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"%WORKSPACE%@tmp\\INPUT_FILE\" INPUT_FILE >nul"
-                        bat "if not \"%INPUT_FILE%\"==\"\" if exist \"%WORKSPACE%@tmp\\%INPUT_FILE%\" if not exist \"%INPUT_FILE%\" copy /y \"%WORKSPACE%@tmp\\%INPUT_FILE%\" \"%INPUT_FILE%\" >nul"
+                        bat(script: "@echo off", returnStatus: true)
+                        bat(script: "if exist \"%WORKSPACE%@tmp\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"%WORKSPACE%@tmp\\INPUT_FILE\" INPUT_FILE >nul", returnStatus: true)
+                        bat(script: "if not \"%INPUT_FILE%\"==\"\" if exist \"%WORKSPACE%@tmp\\%INPUT_FILE%\" if not exist \"%INPUT_FILE%\" copy /y \"%WORKSPACE%@tmp\\%INPUT_FILE%\" \"%INPUT_FILE%\" >nul", returnStatus: true)
 
                         if (fileParamsDir) {
                             def fpWin = fileParamsDir.replace('/', '\\')
-                            bat "echo Debug: dir fileParameters"
-                            bat "if exist \"${fpWin}\" dir /a /b \"${fpWin}\""
+                            bat(script: "echo Debug: dir fileParameters", returnStatus: true)
+                            bat(script: "if exist \"${fpWin}\" dir /a /b \"${fpWin}\"", returnStatus: true)
 
                             // Common location for uploaded file parameters
-                            bat "if exist \"${fpWin}\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"${fpWin}\\INPUT_FILE\" INPUT_FILE >nul"
+                            bat(script: "if exist \"${fpWin}\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"${fpWin}\\INPUT_FILE\" INPUT_FILE >nul", returnStatus: true)
                             if (originalName) {
-                                bat "if exist \"${fpWin}\\${originalName}\" if not exist \"${originalName}\" copy /y \"${fpWin}\\${originalName}\" \"${originalName}\" >nul"
+                                bat(script: "if exist \"${fpWin}\\${originalName}\" if not exist \"${originalName}\" copy /y \"${fpWin}\\${originalName}\" \"${originalName}\" >nul", returnStatus: true)
                             }
                         }
 
                         // Last-resort: search the workspace recursively for the uploaded name.
                         if (originalName) {
                             // Note: `dir` returns exit code 1 when nothing is found; don't fail the build on this best-effort search.
-                            bat "@echo off & for /f \"delims=\" %%F in ('dir /s /b \"%WORKSPACE%\\${originalName}\" 2^>nul') do (if not exist \"${originalName}\" copy /y \"%%F\" \"${originalName}\" >nul) & exit /b 0"
+                            bat(script: "@echo off & for /f \"delims=\" %%F in ('dir /s /b \"%WORKSPACE%\\${originalName}\" 2^>nul') do (if not exist \"${originalName}\" copy /y \"%%F\" \"${originalName}\" >nul) & exit /b 0", returnStatus: true)
                         }
 
-                        bat "echo Debug: dir workspace root"
-                        bat "dir /a /b"
-                        bat "echo Debug: dir workspace@tmp"
-                        bat "if exist \"%WORKSPACE%@tmp\" dir /a /b \"%WORKSPACE%@tmp\""
+                        bat(script: "echo Debug: dir workspace root", returnStatus: true)
+                        bat(script: "dir /a /b", returnStatus: true)
+                        bat(script: "echo Debug: dir workspace@tmp", returnStatus: true)
+                        bat(script: "if exist \"%WORKSPACE%@tmp\" dir /a /b \"%WORKSPACE%@tmp\"", returnStatus: true)
                     }
 
                     // Resolve which path we should validate.
