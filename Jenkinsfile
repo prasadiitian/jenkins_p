@@ -53,6 +53,10 @@ pipeline {
                             bat(script: "echo Debug: dir fileParameters", returnStatus: true)
                             bat(script: "if exist \"${fpWin}\" dir /a /b \"${fpWin}\"", returnStatus: true)
 
+                            // Some Jenkins versions store the uploaded file with an unexpected name.
+                            // If anything exists under fileParameters, copy the first file we find.
+                            bat(script: "@echo off & if exist \"${fpWin}\" (for /f \"delims=\" %%F in ('dir /s /b \"${fpWin}\" 2^>nul') do (echo Debug: fileParameters found %%F & if not exist INPUT_FILE copy /y \"%%F\" INPUT_FILE >nul)) & exit /b 0", returnStatus: true)
+
                             // Common location for uploaded file parameters
                             bat(script: "if exist \"${fpWin}\\INPUT_FILE\" if not exist INPUT_FILE copy /y \"${fpWin}\\INPUT_FILE\" INPUT_FILE >nul", returnStatus: true)
                             if (originalName) {
@@ -86,7 +90,10 @@ pipeline {
                     }
 
                     if (found == 'sample_input.csv') {
-                        echo "Using sample_input.csv (no usable upload found)."
+                        if (originalName) {
+                            error("You provided INPUT_FILE='${originalName}', but Jenkins did not store the uploaded file for this build. Re-run using 'Build with Parameters' and choose the file again.")
+                        }
+                        echo "Using sample_input.csv (no upload provided)."
                         currentBuild.result = 'UNSTABLE'
                     }
 
