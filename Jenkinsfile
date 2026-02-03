@@ -1,9 +1,11 @@
+properties([
+    parameters([
+        [$class: 'FileParameterDefinition', name: 'INPUT_FILE', description: 'Upload a CSV/TXT file to validate (2 numeric columns: a,b).'],
+    ]),
+])
+
 pipeline {
     agent any
-
-    parameters {
-        file(name: 'INPUT_FILE', description: 'Upload a CSV/TXT file to validate (2 numeric columns: a,b).')
-    }
 
     options {
         timestamps()
@@ -19,6 +21,9 @@ pipeline {
         stage('Install + Test') {
             steps {
                 script {
+                    if (!params.INPUT_FILE) {
+                        error("Missing INPUT_FILE. Use 'Build with Parameters' and upload a file.")
+                    }
                     if (isUnix()) {
                         sh '''
                             set -eu
