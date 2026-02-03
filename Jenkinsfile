@@ -12,18 +12,17 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Install + Test') {
             steps {
                 script {
-                    if (!params.INPUT_FILE) {
-                        error("Missing INPUT_FILE. Use 'Build with Parameters' and upload a file.")
+                    def inputPath = (params.INPUT_FILE ?: '').trim()
+                    if (!inputPath) {
+                        echo "INPUT_FILE not provided. Falling back to sample_input.csv."
+                        echo "Tip: use 'Build with Parameters' to upload INPUT_FILE."
+                        inputPath = 'sample_input.csv'
+                        currentBuild.result = 'UNSTABLE'
                     }
+
                     if (isUnix()) {
                         sh '''
                             set -eu
@@ -31,7 +30,7 @@ pipeline {
                             python -m pip install -r requirements.txt
                             mkdir -p reports
                             # Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
-                            python -m jenkins_practice.validate --input "${INPUT_FILE}" --outdir reports
+                            python -m jenkins_practice.validate --input "''' + inputPath + '''" --outdir reports
 
                             # Pytest: JUnit + HTML report + capture console output
                             python -m pytest --junitxml=reports/junit.xml --html=reports/pytest_report.html --self-contained-html > reports/pytest_output.txt
@@ -41,7 +40,7 @@ pipeline {
                         bat "python -m pip install -r requirements.txt"
                         bat "if not exist reports mkdir reports"
                         // Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
-                        bat "python -m jenkins_practice.validate --input \"%INPUT_FILE%\" --outdir reports"
+                        bat "python -m jenkins_practice.validate --input \"" + inputPath + "\" --outdir reports"
 
                         // Pytest: JUnit + HTML report + capture console output
                         bat "python -m pytest --junitxml=reports\\junit.xml --html=reports\\pytest_report.html --self-contained-html > reports\\pytest_output.txt"
@@ -53,8 +52,8 @@ pipeline {
 
     post {
         always {
-            junit 'reports/junit.xml'
-            archiveArtifacts artifacts: 'reports/*.*', fingerprint: true
+            junit testResults: 'reports/junit.xml', allowEmptyResults: true
+            archiveArtifacts artifacts: 'reports/*.*', fingerprint: true, allowEmptyArchive: true
         }
     }
 }
