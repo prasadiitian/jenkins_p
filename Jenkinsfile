@@ -40,10 +40,10 @@ pipeline {
                         bat "python -m pip install --upgrade pip"
                         bat "python -m pip install -r requirements.txt"
                         bat "if not exist reports mkdir reports"
-                        rem Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
+                        // Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
                         bat "python -m jenkins_practice.validate --input \"%INPUT_FILE%\" --outdir reports"
 
-                        rem Pytest: JUnit + HTML report + capture console output
+                        // Pytest: JUnit + HTML report + capture console output
                         bat "python -m pytest --junitxml=reports\\junit.xml --html=reports\\pytest_report.html --self-contained-html > reports\\pytest_output.txt"
                     }
                 }
