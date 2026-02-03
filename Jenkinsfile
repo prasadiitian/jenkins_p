@@ -19,13 +19,16 @@ pipeline {
         stage('Install + Test') {
             steps {
                 script {
-                    def inputPath = (params.INPUT_FILE ?: '').trim()
+                    def inputPath = ((env.INPUT_FILE ?: params.INPUT_FILE) ?: '').toString().trim()
                     if (!inputPath) {
                         echo "INPUT_FILE not provided. Falling back to sample_input.csv."
                         echo "Tip: use 'Build with Parameters' to upload INPUT_FILE."
                         inputPath = 'sample_input.csv'
                         currentBuild.result = 'UNSTABLE'
                     }
+
+                    env.VALIDATION_INPUT = inputPath
+                    echo "Using input file: ${env.VALIDATION_INPUT}"
 
                     if (isUnix()) {
                         sh '''
@@ -34,7 +37,7 @@ pipeline {
                             python -m pip install -r requirements.txt
                             mkdir -p reports
                             # Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
-                            python -m jenkins_practice.validate --input "''' + inputPath + '''" --outdir reports
+                            python -m jenkins_practice.validate --input "$VALIDATION_INPUT" --outdir reports
 
                             # Pytest: JUnit + HTML report + capture console output
                             python -m pytest --junitxml=reports/junit.xml --html=reports/pytest_report.html --self-contained-html > reports/pytest_output.txt
@@ -44,7 +47,7 @@ pipeline {
                         bat "python -m pip install -r requirements.txt"
                         bat "if not exist reports mkdir reports"
                         // Validate uploaded file (Jenkins file parameter is saved in workspace as INPUT_FILE)
-                        bat "python -m jenkins_practice.validate --input \"" + inputPath + "\" --outdir reports"
+                        bat "python -m jenkins_practice.validate --input \"%VALIDATION_INPUT%\" --outdir reports"
 
                         // Pytest: JUnit + HTML report + capture console output
                         bat "python -m pytest --junitxml=reports\\junit.xml --html=reports\\pytest_report.html --self-contained-html > reports\\pytest_output.txt"
